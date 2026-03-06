@@ -1,9 +1,15 @@
-import { Listings as ListingData } from "../data";
 import {
   Listing,
   SearchListingsParams,
   SearchListingsResult,
 } from "@/types/listing";
+import { DataSource } from "@/server/sources/data-source";
+import { listingSource } from "@/server/sources/listing-source";
+import {
+  AdaptedListing,
+  DomainAdapter,
+  listingAdapter,
+} from "@/server/adapters/listing-adapter";
 
 /**
  * Simulate database delay (200-300ms)
@@ -13,41 +19,55 @@ const simulateDbDelay = async (): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, randomDelay));
 };
 
-class ListingService {
-  private readonly data: Listing[];
+export class ListingService {
   private readonly PAGE_LIMIT = 10;
+  private readonly source: DataSource<Listing>;
+  private readonly adapter: DomainAdapter<Listing, AdaptedListing>;
+  private readonly delayFn: () => Promise<void>;
 
-  constructor() {
-    this.data = ListingData.projects as Listing[];
+  constructor(
+    source: DataSource<Listing> = listingSource,
+    adapter: DomainAdapter<Listing, AdaptedListing> = listingAdapter,
+    delayFn: () => Promise<void> = simulateDbDelay
+  ) {
+    this.source = source;
+    this.adapter = adapter;
+    this.delayFn = delayFn;
+  }
+
+  private async getAdaptedListings(): Promise<AdaptedListing[]> {
+    const rawData = await this.source.getAll();
+    return rawData.map((listing) => this.adapter.adapt(listing));
   }
 
   async getTotalCount() {
-    await simulateDbDelay();
-    return this.data.length;
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
+    return data.length;
   }
 
   async getUniqueListingTypes(): Promise<string[]> {
-    await simulateDbDelay();
-    const typesSet = new Set(this.data.map((listing) => listing.type));
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
+    const typesSet = new Set(data.map((listing) => listing.category));
     const types = Array.from(typesSet);
     return types.sort();
   }
 
   async getUniqueMicromarkets(): Promise<string[]> {
-    await simulateDbDelay();
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
     const micromarketsSet = new Set(
-      this.data.map((listing) => listing.micromarket)
+      data.map((listing) => listing.locationLabel)
     );
     const micromarkets = Array.from(micromarketsSet);
     return micromarkets.sort();
   }
 
   async getPriceRange(): Promise<{ min: number; max: number }> {
-    await simulateDbDelay();
-    const prices = this.data.flatMap((listing) => [
-      listing.minPrice,
-      listing.maxPrice,
-    ]);
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
+    const prices = data.flatMap((listing) => [listing.minValue, listing.maxValue]);
     return {
       min: Math.min(...prices),
       max: Math.max(...prices),
@@ -55,9 +75,9 @@ class ListingService {
   }
 
   async getById(id: number): Promise<Listing | null> {
-    await simulateDbDelay();
-
-    const listing = this.data.find((l) => l.id === id);
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
+    const listing = data.find((l) => l.id === id);
     return listing || null;
   }
 
@@ -76,9 +96,10 @@ class ListingService {
       noPagination = false,
     } = params;
 
-    await simulateDbDelay();
+    await this.delayFn();
+    const data = await this.getAdaptedListings();
 
-    const filtered = this.data.filter((listing) => {
+    const filtered = data.filter((listing) => {
       // City filter
       if (city && listing.city.toLowerCase() !== city.toLowerCase()) {
         return false;
@@ -87,27 +108,27 @@ class ListingService {
       // Micromarket filter
       if (
         micromarket &&
-        listing.micromarket.toLowerCase() !== micromarket.toLowerCase()
+        listing.locationLabel.toLowerCase() !== micromarket.toLowerCase()
       ) {
         return false;
       }
 
       // Type filter
-      if (type && listing.type.toLowerCase() !== type.toLowerCase()) {
+      if (type && listing.category.toLowerCase() !== type.toLowerCase()) {
         return false;
       }
 
       // Price range filter
-      if (minPrice !== undefined && listing.maxPrice < minPrice) {
+      if (minPrice !== undefined && listing.maxValue < minPrice) {
         return false;
       }
 
-      if (maxPrice !== undefined && listing.minPrice > maxPrice) {
+      if (maxPrice !== undefined && listing.minValue > maxPrice) {
         return false;
       }
 
       // Name search filter
-      if (name && !listing.name.toLowerCase().includes(name.toLowerCase())) {
+      if (name && !listing.title.toLowerCase().includes(name.toLowerCase())) {
         return false;
       }
 
@@ -115,10 +136,10 @@ class ListingService {
       if (bounds) {
         const { swLat, swLng, neLat, neLng } = bounds;
         if (
-          listing.latitude < swLat ||
-          listing.latitude > neLat ||
-          listing.longitude < swLng ||
-          listing.longitude > neLng
+          listing.coordinates.latitude < swLat ||
+          listing.coordinates.latitude > neLat ||
+          listing.coordinates.longitude < swLng ||
+          listing.coordinates.longitude > neLng
         ) {
           return false;
         }
