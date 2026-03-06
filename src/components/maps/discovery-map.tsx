@@ -3,7 +3,7 @@ import "react-leaflet-cluster/dist/assets/MarkerCluster.css";
 import "react-leaflet-cluster/dist/assets/MarkerCluster.Default.css";
 import "leaflet-defaulticon-compatibility";
 
-import { useEffect, useCallback, useRef, useMemo } from "react";
+import { useEffect, useCallback, useRef, useMemo, ReactNode } from "react";
 import {
   LayersControl,
   MapContainer,
@@ -17,12 +17,14 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import { Listing, MapBounds } from "@/types/listing";
 import { formatPrice } from "@/utils/helpers";
+import { templateConfig } from "@/config/template-config";
 
 interface DiscoveryMapProps {
   listings: Listing[];
   onBoundsChange: (bounds: MapBounds) => void;
   isLoading?: boolean;
   initialBounds?: MapBounds | null;
+  renderPopup?: (listing: Listing) => ReactNode;
 }
 
 const DEFAULT_CENTER: [number, number] = [12.97, 77.59];
@@ -66,6 +68,7 @@ export function DiscoveryMap({
   onBoundsChange,
   isLoading,
   initialBounds,
+  renderPopup,
 }: Readonly<DiscoveryMapProps>) {
   const { center, bounds } = useMemo(() => {
     if (initialBounds) {
@@ -85,7 +88,7 @@ export function DiscoveryMap({
   return (
     <section
       className="flex aspect-auto h-full flex-col overflow-hidden relative font-sans"
-      aria-label="Property discovery via map"
+      aria-label="Map discovery view"
     >
       <style>{mapStyles}</style>
 
@@ -118,8 +121,8 @@ export function DiscoveryMap({
           <LayersControl position="bottomleft">
             <LayersControl.BaseLayer checked name="Street View">
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution={templateConfig.map.tileAttribution}
+                url={templateConfig.map.tileUrl}
               />
             </LayersControl.BaseLayer>
             <LayersControl.BaseLayer name="Satellite View">
@@ -145,7 +148,11 @@ export function DiscoveryMap({
             disableClusteringAtZoom={16}
           >
             {listings.map((listing) => (
-              <ListingMarker key={listing.id} listing={listing} />
+              <ListingMarker
+                key={listing.id}
+                listing={listing}
+                renderPopup={renderPopup}
+              />
             ))}
           </MarkerClusterGroup>
         </MapContainer>
@@ -159,10 +166,19 @@ const POPUP_WIDTH = 280;
 const POPUP_HEIGHT = 270;
 const MARGIN = 20;
 
-function ListingMarker({ listing }: { listing: Listing }) {
+function ListingMarker({
+  listing,
+  renderPopup,
+}: {
+  listing: Listing;
+  renderPopup?: (listing: Listing) => ReactNode;
+}) {
   const map = useMap();
   const markerRef = useRef<L.Marker>(null);
   const popupRef = useRef<L.Popup>(null);
+  const handleClose = useCallback(() => {
+    markerRef.current?.closePopup();
+  }, []);
 
   // Reposition popup after it opens
   useEffect(() => {
@@ -251,10 +267,11 @@ function ListingMarker({ listing }: { listing: Listing }) {
         minWidth={280}
         maxWidth={280}
       >
-        <ListingPopup
-          listing={listing}
-          onClose={() => markerRef.current?.closePopup()}
-        />
+        {renderPopup ? (
+          renderPopup(listing)
+        ) : (
+          <ListingPopup listing={listing} onClose={handleClose} />
+        )}
       </Popup>
     </Marker>
   );

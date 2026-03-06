@@ -1,6 +1,9 @@
 import { Home, Search } from "lucide-react";
+import { templateConfig } from "@/config/template-config";
 
 export function NavbarSkeleton() {
+  const appName = templateConfig.app.name;
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
       <div className="flex items-center gap-6 px-6 py-3">
@@ -10,7 +13,7 @@ export function NavbarSkeleton() {
             <Home className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-gray-900">
-            PlotPirate
+            {appName}
           </span>
         </div>
 

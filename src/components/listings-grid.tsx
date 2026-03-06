@@ -10,16 +10,19 @@ import Image from "next/image";
 import { Pagination, PaginationInfo } from "./ui/pagination";
 import { useListings } from "@/contexts/listings";
 import { CardSkeleton } from "./card-skeleton";
+import { templateConfig } from "@/config/template-config";
+import { ReactNode } from "react";
 
 type ListingsGridProps = {
-  totalCount?: number;
+  renderCard?: (listing: Listing) => ReactNode;
 };
 
 const ITEMS_PER_PAGE = 10;
 
-export function ListingsGrid({ totalCount }: ListingsGridProps) {
+export function ListingsGrid({ renderCard }: ListingsGridProps) {
   const { listingsState, isLoading, setPage } = useListings();
   const { listings, totalPages, currentPage, totalListings } = listingsState;
+  const locationLabel = templateConfig.app.defaultLocationLabel;
 
   const handlePageChange = (page: number) => {
     setPage(page);
@@ -39,7 +42,7 @@ export function ListingsGrid({ totalCount }: ListingsGridProps) {
                   ? `${totalListings.toLocaleString()} listings within map area`
                   : "No listings found"}
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">in Bengaluru</p>
+            <p className="text-sm text-gray-500 mt-0.5">in {locationLabel}</p>
           </div>
           {!isLoading && totalListings > 0 && (
             <PaginationInfo
@@ -64,7 +67,9 @@ export function ListingsGrid({ totalCount }: ListingsGridProps) {
           // Show listings
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <div key={listing.id}>
+                {renderCard ? renderCard(listing) : <ListingCard listing={listing} />}
+              </div>
             ))}
           </div>
         ) : (
