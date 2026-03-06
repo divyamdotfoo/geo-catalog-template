@@ -47,7 +47,7 @@ export function concatenateTypologies(input: string[] | number[]) {
   const lastType = input[input.length - 1];
   if (input.length > 1) {
     const otherTypes = input.slice(0, -1);
-    let result = otherTypes.join(", ");
+    const result = otherTypes.join(", ");
     return result + " & " + lastType;
   } else {
     return lastType;

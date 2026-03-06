@@ -1,4 +1,5 @@
 import { SVGProps } from "react";
+import { MapEntity, SearchFilters } from "./map-entity";
 
 export enum ListingType {
   APARTMENT = "Apartment",
@@ -12,7 +13,7 @@ export enum ListingStatus {
   SOLD_OUT = "soldOut",
 }
 
-export interface Listing {
+export interface Listing extends Partial<MapEntity> {
   id: number;
   name: string;
   minPrice: number;
@@ -34,25 +35,13 @@ export interface Listing {
   longitude: number;
 }
 
-export interface MapBounds {
-  swLat: number;
-  swLng: number;
-  neLat: number;
-  neLng: number;
-}
-
-export interface SearchListingsParams {
-  city?: string;
+export interface SearchListingsParams extends SearchFilters {
   micromarket?: string;
   type?: ListingType;
   minPrice?: number;
   maxPrice?: number;
   name?: string;
-  page?: number;
   limit?: number;
-  bounds?: MapBounds;
-  /** When true, returns all results without pagination (useful for map markers) */
-  noPagination?: boolean;
 }
 
 export interface SearchListingsResult {
@@ -64,10 +53,10 @@ export interface SearchListingsResult {
 
 export interface ListingsData {
   projects: Listing[];
-  developers: any[];
-  micromarkets: any[];
+  developers: unknown[];
+  micromarkets: unknown[];
   currentPage: number;
-  eoiProjects: any[];
+  eoiProjects: unknown[];
   totalPages: number;
   totalProjects: number;
 }
@@ -84,3 +73,5 @@ export interface LocationType {
 export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
+
+export type { MapBounds } from "./map-entity";
